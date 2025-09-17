@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>部室カギ管理</title>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZOKBvX-kPFK6if5tO1u1XfeQX-HLVWu20o_hpAVJrlz19DhgfJEveG4WQuK5YKb7z8A/exec"; // 
+
+// ログ送信
+async function sendLog(action) {
+  const name = document.getElementById("name").value.trim();
+  if (!name) return alert("名前を入力してください");
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, action })
+    });
+    const result = await response.json();
+    if (result.status === "success") {
+      alert(`${action}を記録しました`);
+      document.getElementById("name").value = "";
+      loadRecentLogs();
+    } else {
+      alert("記録に失敗しました");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("通信エラーが発生しました");
+  }
+}
+
+// 最近のログ表示
+async function loadRecentLogs() {
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const logs = await response.json();
+    const logList = document.getElementById("recent-log-list");
+    if (!logList) return;
+    logList.innerHTML = "";
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    logs.forEach(log => {
+      const logTime = new Date(log.timestamp);
+      if (logTime >= oneDayAgo) {
+        const li = document.createElement("li");
+        if (log.action === "鍵持ち帰り") li.style.color = "red";
+        if (log.action === "鍵返却") li.style.color = "blue";
+        li.textContent = `${log.timestamp} - ${log.name} - ${log.action}`;
+        logList.appendChild(li);
+      }
+    });
+  } catch (err) {
+    console.error("ログの取得に失敗しました", err);
+  }
+}
+
+// 自動更新（30秒ごと）
+setInterval(loadRecentLogs, 30000);
+
+// 管理者画面開く
+function openAdminPage() {
+  const pw = prompt("管理者用パスワードを入力してください");
+  if (pw === "Nakagawa_Hidaka") {
+    window.open("admin.html", "_blank");
+  } else {
+    alert("パスワードが違います");
+  }
+}
+
+window.onload = loadRecentLogs;
+</script>
+<style>
+body { font-family: sans-serif; text-align: center; padding: 20px; background: #f8f8f8; }
+.container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+input { width: 90%; padding: 10px; font-size: 16px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ccc; }
+.btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+button { padding: 12px 8px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; }
+.open-btn { background-color: #4caf50; color: white; }
+.close-btn { background-color: #ff9800; color: white; }
+.take-btn { background-color: #f44336; color: white; }
+.return-btn { background-color: #2196f3; color: white; }
+.admin-btn { background-color: #9c27b0; color: white; margin-top: 15px; }
+ul { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; }
+li { background: #eee; margin: 4px 0; padding: 8px; border-radius: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>部室カギ管理</h1>
+  <input type="text" id="name" placeholder="名前を入力">
+  <div class="btn-group">
+    <button class="open-btn" onclick="sendLog('開錠')">開錠</button>
+    <button class="close-btn" onclick="sendLog('施錠')">施錠</button>
+    <button class="take-btn" onclick="sendLog('鍵持ち帰り')">鍵持ち帰り</button>
+    <button class="return-btn" onclick="sendLog('鍵返却')">鍵返却</button>
+  </div>
+  <button class="admin-btn" onclick="openAdminPage()">管理者画面</button>
+
+  <h2>最近のログ（24時間以内）</h2>
+  <ul id="recent-log-list"></ul>
+</div>
+</body>
+</html>

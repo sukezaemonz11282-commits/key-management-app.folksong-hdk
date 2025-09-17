@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理者画面 - 部室カギ管理</title>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZOKBvX-kPFK6if5tO1u1XfeQX-HLVWu20o_hpAVJrlz19DhgfJEveG4WQuK5YKb7z8A/exec"; // 
+
+async function loadLogs() {
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const logs = await response.json();
+    const tbody = document.getElementById("log-table-body");
+    tbody.innerHTML = "";
+    logs.forEach((log,index)=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${index+1}</td><td>${log.timestamp}</td><td>${log.name}</td><td>${log.action}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch(err) {
+    console.error(err);
+    alert("ログ取得に失敗しました");
+  }
+}
+
+async function syncSheet() {
+  try {
+    const response = await fetch(SCRIPT_URL,{
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminSync:true })
+    });
+    const result = await response.json();
+    if(result.status==="success"){
+      alert("スプレッドシートに反映しました");
+      loadLogs();
+    } else {
+      alert("反映に失敗しました");
+    }
+  } catch(err){
+    console.error(err);
+    alert("通信エラー");
+  }
+}
+
+function downloadCSV(){
+  const rows = document.querySelectorAll("#log-table tbody tr");
+  let csv="No,日時,名前,行動\n";
+  rows.forEach(row=>{
+    const cols = row.querySelectorAll("td");
+    csv+=Array.from(cols).map(td=>`"${td.textContent}"`).join(",")+"\n";
+  });
+  const blob = new Blob([csv],{type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="key_logs.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+window.onload = loadLogs;
+</script>
+<style>
+body { font-family: sans-serif; padding:20px; background:#f4f4f4; }
+.container{max-width:800px;margin:0 auto;background:white;padding:20px;border-radius:16px;box-shadow:0 4px 8px rgba(0,0,0,0.1);}
+button{padding:10px 15px;margin:5px;border:none;border-radius:8px;cursor:pointer;font-size:14px;}
+.sync-btn{background:#4caf50;color:white;}
+.download-btn{background:#2196f3;color:white;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th,td{border:1px solid #ccc;padding:8px;text-align:center;}
+th{background:#f0f0f0;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>管理者画面 - 部室カギ管理</h1>
+  <div>
+    <button class="sync-btn" onclick="syncSheet()">スプレッドシートに反映</button>
+    <button class="download-btn" onclick="downloadCSV()">Excel(CSV)ダウンロード</button>
+  </div>
+  <table>
+    <thead>
+      <tr><th>No</th><th>日時</th><th>名前</th><th>行動</th></tr>
+    </thead>
+    <tbody id="log-table-body"></tbody>
+  </table>
+</div>
+</body>
+</html>
